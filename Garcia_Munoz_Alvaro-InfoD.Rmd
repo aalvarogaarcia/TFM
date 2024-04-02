@@ -1,0 +1,186 @@
+---
+title: "Informe dinámico"
+author: "Álvaro García Muñoz"
+date: "`r Sys.Date()`"
+bibiliography: Data/TFM.bib
+biblio-style: "apalike"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  pdf_document:
+    latex_engine: "xelatex"
+    toc: true
+    number_sections: true
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r librerias, include =FALSE}
+library(ggplot2)
+library(tidyverse)
+library(SNPRelate)
+library(RefManageR)
+library(openxlsx)
+library(stats)
+library(reticulate)
+```
+
+# Introducción
+
+Este documento es un informe dinámico el cuál voy a diseñar usando _toy data_ que me servirán para preparar el estudio de un conjunto de datos geneticos sobre enfermedades respiratorias graves, a lo largo de este documento combinaré el uso de python y R para el análisis de los datos. 
+
+## Carga de datos
+
+Primero cargaremos los datos en nuestro entorno:
+
+```{r Carga de datos}
+archivo_vcf <-"Data//ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf"
+archivo_cv <-"Data//lists.xlsx"
+
+#snpgdsVCF2GDS(archivo_vcf, "estudio.gds") Este archivo ha de obtenerse antes del informe
+covariables <- read.xlsx(archivo_cv)
+
+GDS <- snpgdsOpen("estudio.gds")
+```
+## Eliminación de LD
+
+$R^2$ será el coeficiente de determinación, este varía entre $0$ y $1$, siendo $0$ que el modelo no explica ninguna varianza de la variable dependiente y $1$ que el modelo explica toda la varianza de la variable dependiente. Al escoger un valor de $0.8$ estamos buscando un modelo que explique el $80\%$ de la varianza de la variable dependiente
+
+Con el objetivo de evitar el sesgo vamos a proceder a realizar un filtrado por $r^2$ donde eliminaremos SNPs con un valor de $r^2$ mayor a un umbral predefinido, en mi caso $0.8$. 
+
+
+
+```{r Eliminación LD}
+snpset <- snpgdsLDpruning(GDS, ld.threshold = 0.2, method = "r")
+
+snpset.id <- unlist(unname(snpset)) 
+```
+
+## PCA
+
+Una vez hemos completado el paso del _Linkage  disequilibrium_, podemos realizar una primera PCA, en mi caso la voy a realizar de $10$ componentes:
+
+```{r PCA}
+pca <- snpgdsPCA(GDS, snp.id= snpset.id, num.thread = 10)
+
+df <- data.frame(sample.id = pca$sample.id,
+                 EV1=pca$eigenvect[,1],
+                 EV2=pca$eigenvect[,2],
+                 EV3=pca$eigenvect[,3],
+                 EV4=pca$eigenvect[,4],
+                 EV5=pca$eigenvect[,5],
+                 EV6=pca$eigenvect[,6],
+                 EV7=pca$eigenvect[,7],
+                 EV8=pca$eigenvect[,8],
+                 EV9=pca$eigenvect[,9],
+                 EV10=pca$eigenvect[,10],
+                 stringsAsFactors=FALSE)
+```
+## Visuales
+
+Para terminar con la introducción vamos a proceder a guardar correctamente las componenetes principales como archivos excel:
+
+```{r Mixing y Excel}
+pca_cv <- data.frame(df, covariables[,-1])
+archivo_xlsx <- "Data//PCA10_Covariables.xlsx"
+archivo_csv <- "Python//PCA10_Covariables.csv"
+
+write.xlsx(pca_cv,archivo_xlsx)
+write.csv(pca_cv, archivo_csv)
+```
+
+Una vez hemos guardado los datos y sus covariables en un excel, podemos acceder al programa de python dónde podemos tener una visualización en 3 dimensiones de sus componenetes principales, y a continuación observaremos en el documento una visualización en 2 dimensiones de sus componenetes principales
+
+```{r Plot 2D}
+colores <- c("#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF",
+            "#00FFFF", "#FF8000", "#80FF00", "#8000FF", "#FFFF80", "#FF80FF",
+            "#80FFFF", "#008000", "#0080FF", "#800080", "#808080", "#C0C0C0",
+            "#A0A0A0", "#606060", "#404040", "#202020", "#AA12AA", "#158752", 
+            "#CCCC56", "#949513")
+
+ggplot(pca_cv, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
+```
+
+
+# Clustering clásico
+
+Una vez realizado la PCA vamos a proceder a probar distintas técnicas para el agrupamiento de datos, vamos a empezar por un método clásico.
+
+## K-means
+
+El algoritmo k-means es un método de aprendizaje automático no supervisado que se utiliza para agrupar datos en clusters. El objetivo es dividir los datos en k grupos, de manera que los puntos dentro de cada grupo sean lo más similares posible entre sí y lo más diferentes posible de los puntos de otros grupos.
+
+ 1. Se elige un valor para k, el número de clusters que se desea crear.
+ 2. Se seleccionan k puntos al azar de los datos como centroides iniciales.
+ 3. Cada punto de datos se asigna al cluster cuyo centroide está más cercano a él.
+ 4. Se calculan los nuevos centroides como la media de los puntos de cada cluster.
+ 5. Los pasos 3 y 4 se repiten hasta que los centroides no cambien significativamente o se alcance un número máximo de iteraciones.
+
+
+```{r kmeans}
+k_valores <- c(5,26)
+kmeans_PCA <- list()
+
+set.seed(123)
+for (k in k_valores){
+  agrupamiento <- kmeans(df[,-1], centers = k)
+  k<-as.character(k)
+  kmeans_PCA[[k]] <- agrupamiento 
+  }
+for (i in kmeans_PCA){
+  print(i$size)
+}
+table(as.factor(pca_cv$super_pop))
+
+table(as.factor(pca_cv$pop))
+
+```
+
+Ya hemos realizado un agrupamiento de los datos ahora podemos repetir la visualización pero con estos agrupamientos
+
+
+```{r Plot kmeans}
+df_kmeans <- pca_cv
+counter <- 0
+  
+for (i in kmeans_PCA){
+  df_kmeans <- data.frame(df_kmeans, i$cluster)
+  counter <- counter + 1
+}
+
+while (counter>0){
+  name <- paste("Cluster", counter)
+  n_total<- ncol(df_kmeans)
+  
+  colnames(df_kmeans)[n_total - counter + 1] <- name
+  
+  df_kmeans$name <- factor(df_kmeans$name)
+  counter <- counter - 1
+}
+
+#Prueba concreta
+
+par(mfrow=c(1,2))
+
+ggplot(df_kmeans, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
+
+ggplot(df_kmeans, aes(EV2, EV1, color = "Cluster 2", shape = "Cluster 1")) + geom_point() + scale_color_manual(values=colores) + theme_light()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
