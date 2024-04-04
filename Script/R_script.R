@@ -98,11 +98,14 @@ table(as.factor(pca_cv$pop))
 
 #Plot kmeans (es la misma de Plots)
 
-df_kmeans <- pca_cv
-for (i in kmeans_PCA){
-  df_kmeans <- data.frame(df_kmeans, i$cluster) #Creo un nuevo dataframe y le añado los nuevos clusters
-}
+df_kmeans$pop <- as.factor(kmeans_PCA$'26'$cluster)
+df_kmeans$super_pop <- as.factor(kmeans_PCA$'5'$cluster)
 
+par(mfrow=c(1,2))
+
+ggplot(pca_cv, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
+
+ggplot(df_kmeans, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
 
 
 

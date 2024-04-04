@@ -25,8 +25,10 @@ library(tidyverse)
 library(SNPRelate)
 library(RefManageR)
 library(openxlsx)
-library(stats)
+
 library(reticulate)
+
+set.seed(123)
 ```
 
 # Introducción
@@ -122,12 +124,13 @@ El algoritmo k-means es un método de aprendizaje automático no supervisado que
 
 
 ```{r kmeans}
+require(stats)
 k_valores <- c(5,26)
 kmeans_PCA <- list()
 
-set.seed(123)
+
 for (k in k_valores){
-  agrupamiento <- kmeans(df[,-1], centers = k)
+  agrupamiento <- stats::kmeans(df[,-1], centers = k)
   k<-as.character(k)
   kmeans_PCA[[k]] <- agrupamiento 
   }
@@ -145,38 +148,57 @@ Ya hemos realizado un agrupamiento de los datos ahora podemos repetir la visuali
 
 ```{r Plot kmeans}
 df_kmeans <- pca_cv
-counter <- 0
-  
-for (i in kmeans_PCA){
-  df_kmeans <- data.frame(df_kmeans, i$cluster)
-  counter <- counter + 1
-}
 
-while (counter>0){
-  name <- paste("Cluster", counter)
-  n_total<- ncol(df_kmeans)
-  
-  colnames(df_kmeans)[n_total - counter + 1] <- name
-  
-  df_kmeans$name <- factor(df_kmeans$name)
-  counter <- counter - 1
-}
 
 #Prueba concreta
 
-par(mfrow=c(1,2))
+df_kmeans$pop <- as.factor(kmeans_PCA$'26'$cluster)
+df_kmeans$super_pop <- as.factor(kmeans_PCA$'5'$cluster)
 
+layout(matrix(c(1, 2), nrow = 1, ncol = 2, byrow = TRUE))
+ggplot(pca_cv, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
 ggplot(df_kmeans, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
 
-ggplot(df_kmeans, aes(EV2, EV1, color = "Cluster 2", shape = "Cluster 1")) + geom_point() + scale_color_manual(values=colores) + theme_light()
+#A mejorar igualar la repartición de colores?
+```
 
+Antes de continuar quiero ver una gráfica donde la coloración es proporcionada por el agrupamiento de 5 únicamente
+
+```{r}
+layout(matrix(c(1, 2), nrow = 1, ncol = 2, byrow = TRUE))
+
+ggplot(pca_cv, aes(EV2, EV1, color = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
+ggplot(df_kmeans, aes(EV2, EV1, color = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
 ```
 
 
+Lo que más me sorprende es el hecho de que en los 26 grupos que ha hecho no encuentro resultados especialmente diferentes a usar las covariables ya incluidas en el primer dataset.
+
+Podríamos realizar un nuevo agrupamiento ajustando las covariables como vectores numericos para incluirlos en el estudio realizando un _hot_encoding_ pero actualmente estoy más interesado en probar otros métodos de clustering supervisado.
 
 
+# Clustering Automático
+
+En este apartado profundizaremos más en métodos de agrupamiento automático diversos, comenzaremos por métodos de agrupamiento de la familia de algoritmos **Support Vector Machine** o como son conocidos **SVM**.
+
+##SVM
+
+Los métodos de agrupamiento SVM (Support Vector Machine) son una familia de algoritmos que utilizan máquinas de vectores de soporte para realizar tareas de agrupamiento. Estos métodos son particularmente útiles para conjuntos de datos con alta dimensionalidad y estructuras no lineales. Nos vienen como anillo al dedo ;P.
+
+Encontramos diferentes tipos de *SVM*:
+
+- *SVM con núcleo espectral*: Este método utiliza un núcleo espectral para mapear los datos a un espacio de características de menor dimensión, donde se aplica el algoritmo SVM estándar.
+- *SVM jerárquica*: Este método utiliza un esquema de agrupamiento jerárquico para construir una jerarquía de grupos, donde cada grupo se define por un conjunto de vectores de soporte.
+- *Agrupamiento basado en densidades con SVM*: Este método utiliza la densidad de los datos para identificar grupos, donde la densidad se estima utilizando la distancia entre los puntos de datos y los vectores de soporte.
 
 
+### SVM con núcleo espectral
+
+```{r Agrupamiento SVM con núcleo espectral}
+require(kernlab)
+vector <- as.matrix(df[,-1])
+model <- kernlab::ksvm(vector, type = "C-svc")
+```
 
 
 
