@@ -14,14 +14,20 @@ library(reticulate) #Uso de python
 library(RefManageR) #Bibliografía
 library(openxlsx) #Gestión de archivos tipo excel
 library(stats) #Incluye diferentes estadísticas
+library(data.table)
 
 #Prepare the session
 rm(list = ls())
 
 
 #Define paths
+getwd()
 path <- "write-your-path-here"
 setwd(path)
+
+fn <- "vcf1.vcf"
+filename <- paste(path, fn, sep="/")
+data <- fread(filename)
 
 #Load data
 archivo_vcf <- "-.vcf"  #Aquí incluiremos la ruta al archivo VCF del cual estraeremos los datos
