@@ -15,9 +15,15 @@ library(RefManageR) #Bibliografía
 library(openxlsx) #Gestión de archivos tipo excel
 library(stats) #Incluye diferentes estadísticas
 
+#Prepare the session
+rm(list = ls())
 
-#Cargar los datos
 
+#Define paths
+path <- "write-your-path-here"
+setwd(path)
+
+#Load data
 archivo_vcf <- "-.vcf"  #Aquí incluiremos la ruta al archivo VCF del cual estraeremos los datos
 archivo_cv <- "-.xlsx" #Aquí incluiremos las covariables que deseemos estudiar
 
@@ -114,7 +120,7 @@ ggplot(df_kmeans, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() 
 
 
 
-
+##End Of Script
 
 
 
