@@ -30,19 +30,23 @@ filename <- paste(path, fn, sep="/")
 data <- fread(filename)
 
 #Load data
-archivo_vcf <- "-.vcf"  #Aquí incluiremos la ruta al archivo VCF del cual estraeremos los datos
-archivo_cv <- "-.xlsx" #Aquí incluiremos las covariables que deseemos estudiar
+fn_vcf <- "-.vcf"  #Aquí incluiremos la ruta al archivo VCF del cual estraeremos los datos
+fn_cv <- "-.xlsx" #Aquí incluiremos las covariables que deseemos estudiar
+fn_red <- "-" #This must be a plain text file
 
-snpgdsVCF2GDS(archivo_vcf, "estudio.gds") #Este será nuestro archivo sobre el cual haremos unas primeras PCA
-covariables <- read.xlsx(archivo_cv) #Este será nuestro conjunto de covariables
+snpgdsVCF2GDS(fn_vcf, "chr22") #This command creates a GDS file
+co.var <- read.xlsx(fn_cv) #This command reads an excel file of covariables, be careful in front of whom you open it.
+red <- as.vector(read.csv(fn_red, header= FALSE)) #Leemos el archivo de reducción
+red <- unlist(unname(red)) 
 
-GDS <- snpgdsOpen("estudio.gds")
+
+co.var.red<- filter(co.var, co.var$sample %in% red)
 
 #Eliminación LD
 
 snpset <- snpgdsLDpruning(GDS, ld.threshold = 0.2, method = "r")
 
-snpset.id <- unlist(unname(snpset)) ##???
+snpset.id <- unlist(unname(snpset)) 
 
 #PCA
 
@@ -64,7 +68,7 @@ df <- data.frame(sample.id = pca$sample.id,
 #Excel
 
 pca_cv <- data.frame(df, covariables[,-1])
-archivo_xlsx <- "Data//PCA10_Covariables.xlsx"
+archivo_xlsx <- "PCA10_Covariables.xlsx"
 write.xlsx(pca_cv,archivo_xlsx)
 
 #Plot
