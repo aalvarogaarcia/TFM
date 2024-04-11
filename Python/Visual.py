@@ -6,7 +6,7 @@ import numpy as np
 
 
 
-PCA = pd.read_csv("C://Users//agarm//Desktop//TFM 2.0//TFM-2.0//Python//PCA10_Covariables.csv", index_col = 0)
+PCA = pd.read_csv("", index_col = 0)
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection = '3d')
