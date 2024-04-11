@@ -49,12 +49,14 @@ co.var.red<- filter(co.var, co.var$sample %in% red)
 co.var.red <- co.var[co.var$sample %in% red & co.var$pop %in% filter, ]
 
 GDS <- snpgdsOpen(fn_GDS)
+genome.matrix<- snpgdsGetGeno(GDS)
 #Eliminación LD
 
 snpset <- snpgdsLDpruning(GDS, ld.threshold = 0.2, method = "r")
 
 snpset.id <- unlist(unname(snpset)) 
 
+genome.matrix<- snpgdsGetGeno(GDS, snp.id = snpset.id)
 #### DIMENSION REDUCTION ####
 
 #PCA
