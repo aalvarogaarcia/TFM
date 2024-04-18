@@ -9,7 +9,7 @@ library(SNPRelate) #Main analysis of genetic data
 library(openxlsx) #Excel file management
 library(dbscan) #Hierarchical DB scan
 library(umap) #Dimension reduction
-
+library(dummy) #Data treatment
 #### DATA INGESTION
 
 #Working directory
@@ -27,9 +27,9 @@ library(umap) #Dimension reduction
 
 
   snpgdsVCF2GDS(fn_vcf, fn_GDS)
-  phenotypes <-unlist(unname( read.csv(fn_phenotypes)))
-  covariates <-unlist(unname( read.csv(fn_covariates)))
-  proteins <-unlist(unname( read.csv(fn_proteins)))
+  phenotypes <-read_tsv(paste(path, fn_phenotypes, sep ='/'))
+  covariates <-read.csv(paste(path, fn_covariates, sep ='/'))
+  proteins <-read.csv(paste(path, fn_proteins, sep ='/'))
 
   GDS <- snpgdsOpen(fn_GDS)
 
@@ -49,9 +49,13 @@ library(umap) #Dimension reduction
   #We transform chr column of covariates in matrix
 
   hot_encoding <- model.matrix(~, data = covariates, contrasts = "contr.treatment")
-
   hot_encoding <- cbind(sample = covariates[,1],hot_encoding)
-
+  
+  #We transform chr into numeric
+  phenotypes.dummy <- dummy(phenotypes[,-1], int = TRUE)
+  phenotypes.int <- cbind(phenotypes[,-ncol(phenotypes)], phenotypes.dummy)
+  
+  
 #PCA
 
   pca <- snpgdsPCA(GDS, snp.id = snpset.id, num.thread = 10)
@@ -65,7 +69,7 @@ library(umap) #Dimension reduction
 
   genome.matrix <- cbind(sample = pca$sample.id, genome.matrix) #We suppose they have the same order, i need a better method (pca, maybe)
   data.matrix <- merge(genome.matrix, hot_encodings, proteins, by="sample")
-  label.matrix <- phenotypes
+  labels <- phenotypes$Diagnosis
 
 
 #Dim reduction (UMAP)

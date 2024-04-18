@@ -87,12 +87,17 @@ fn_csv<- "PCA10_Covariables"
 write.csv2(pca_cv,fn_csv)
 
 #Ajuste de covariables
+
+
 hot_encoding_pop <- model.matrix(~pop, data = pca_cv, contrasts = "contr.treatment")
 hot_encoding_gender <- model.matrix(~gender, data = pca_cv, contrasts = "contr.treatment")
 hot_encoding_super_pop <- model.matrix(~super_pop, data = pca_cv, contrasts = "contr.treatment")
 
 df_hot_encoding <- cbind(df, hot_encoding_pop[,-1], genderMale = hot_encoding_gender[,-1], super_pop =pca_cv$super_pop)
 
+library(dummy)
+co.red.dummies <- dummy(co.var.red[,-1], int = TRUE)
+co.red.dummies <- cbind(sample = co.var.red[,1], co.red.dummies)
 #Plot
 
 #Paleta de colores de 26 clases
@@ -137,8 +142,7 @@ ggplot(coordinates.tsne, aes(X1, X2, color = labels)) + geom_point() + theme_lig
 
 #### CLUSTERS #####
 
-
-#### Supervised - Learning ####
+#### Unsupervised - Learning ####
 
 #K-means
 
@@ -175,6 +179,26 @@ ggplot(pca_cv, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + s
 ggplot(df_kmeans, aes(EV2, EV1, color = pop, shape = super_pop)) + geom_point() + scale_color_manual(values=colores) + theme_light()
 
 ggplot(df_hot_encoding, aes(EV2, EV1, color = cluster)) + geom_point()
+
+
+#ConsensusClusterPlus
+ library(ConsensusClusterPlus)
+
+  df.data <- merge(df, co.red.dummies, by = "sample")
+  df.data <- cbind(genome.matrix, df.data[,-1])
+  
+  
+  #Clustering
+  title = tempdir()
+  results = ConsensusClusterPlus(df.data, maxK = 26, reps = 50, pItem = 0.8, pFeature = 1, 
+                                 title = title, clusterAlg = "hc", distance = "pearson", plot = "png")
+
+  
+  #ICL
+  icl <- calcICL(results, title = title, plot='png')
+  icl[['clustersConsensus']]
+
+  #### Supervised - Learning ####
 
 
 #SVM
@@ -253,21 +277,21 @@ write.csv(as.matrix(df.data), "chr22-matrix")
 write.csv(v.labels, "chr22-labels")
 
 
-# Defining model (sequential)
+  # Defining model (sequential)
+    
+    model <- keras_model_sequential() 
+    model %>%  #Defining the model for our study
+      layer_dense(units = 256, activation = 'relu', input_shape = c(23,17)) %>% 
+      layer_dropout(rate = 0.4) %>% 
+      layer_dense(units = 128, activation = 'relu') %>%
+      layer_dropout(rate = 0.3) %>%
+      layer_dense(units = 10, activation = 'softmax')
 
-model <- keras_model_sequential() 
-model %>%  #Defining the model for our study
-  layer_dense(units = 256, activation = 'relu', input_shape = c(23,17)) %>% 
-  layer_dropout(rate = 0.4) %>% 
-  layer_dense(units = 128, activation = 'relu') %>%
-  layer_dropout(rate = 0.3) %>%
-  layer_dense(units = 10, activation = 'softmax')
-
-model %>% compile(
-  loss = 'categorical_crossentropy',
-  optimizer = optimizer_rmsprop(),
-  metrics = c('accuracy')
-)
+    model %>% compile(
+      loss = 'categorical_crossentropy',
+      optimizer = optimizer_rmsprop(),
+      metrics = c('accuracy')
+    )
 
 ##End Of Script
 snpgdsClose(GDS)
