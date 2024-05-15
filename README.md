@@ -5,11 +5,11 @@ The project was developed as part of a Master's thesis in Bioinformatics and bio
 
 ## Table of contents
 
-* [Objective] (## Objective)
-* [Methodolgy] (## Methodolgy)
-* [Target Audience] (## Target Audience)
-* [Disclaimer] (## Disclaimer)
-* [Next Steps] (## Next Steps)
+* [Objective](#objective)
+* [Methodolgy](#methodolgy)
+* [Target Audience](#target-audience)
+* [Disclaimer](#disclaimer)
+* [Next Steps](#next-steps)
 
 ## Objective
 
