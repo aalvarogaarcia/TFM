@@ -3,11 +3,13 @@
 This repository contains a Shiny user interface and an R Markdown report for unsupervised clustering for endophenotype discovery in genetic and protein data. 
 The project was developed as part of a Master's thesis in Bioinformatics and biostatistics from UOC-UB.
 
-* [Objective](## Objective)
-* [Methodolgy](## Methodolgy)
-* [Target Audience](## Target Audience)
-* [Disclaimer](## Disclaimer)
-* [Next Steps](## Next Steps)
+## Table of contents
+
+* [Objective] (## Objective)
+* [Methodolgy] (## Methodolgy)
+* [Target Audience] (## Target Audience)
+* [Disclaimer] (## Disclaimer)
+* [Next Steps] (## Next Steps)
 
 ## Objective
 
