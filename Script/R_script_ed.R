@@ -2,12 +2,7 @@
 
 #Este documento recoge ordenadamente y con comentarios el código de R utilizado para el informe dinámico
 
-#### INTRODUCCIÓN ####
-
-#install R packages
-#if (!require("BiocManager", quietly = TRUE))
-#  install.packages("BiocManager")
-#BiocManager::install("SNPRelate")
+#### INTRODUCTION ####
 
 #Load R packages
 library(ggplot2)     #Visualización de los datasets
@@ -30,7 +25,7 @@ library(dbscan)      #DBSCAN clustering
 
 #Define base path
 getwd()
-path <- "/mnt/756b4178-6cf1-4cab-bdfb-8342cc4c885a/jlorsal/ANALISIS_275GB/Alvaro/06_TFM"
+path <- ""
 setwd(path)
 
 #### DATA MANAGEMENT ####
