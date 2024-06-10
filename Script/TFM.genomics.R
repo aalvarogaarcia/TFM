@@ -23,7 +23,7 @@ set.seed(123)
 
 #Define base path
 getwd()
-path <- "C:/Users/agarm/Desktop/TFM 2.0/data"
+path <- ""
 setwd(path)
 
 #File reading
@@ -651,8 +651,3 @@ CairoPDF(file = "Fig.genomics.Clhdb3.pdf", width = 8, height = 5)
 set.seed(123)
 plot(hdbscan(data, minPts = 5), gradient = colors )
 dev.off()
-
-
-
-
-
