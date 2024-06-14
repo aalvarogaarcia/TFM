@@ -58,7 +58,7 @@ The R Markdown report provides a detailed overview of the methodology and result
 
 > June 18, 2024. My TFM github repository became public!
 
-> May 19, 2024. Workin hard into my GH repository.
+> May 19, 2024. Working hard into my GH repository.
 
 > May 3, 2024. The developed UI is now available here.
  
