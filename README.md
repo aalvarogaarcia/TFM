@@ -8,7 +8,7 @@ The project was developed as part of a Master's thesis in Bioinformatics and bio
 ## Table of contents
 
 * [Objective](#objective)
-* [Methodolgy](#methodolgy)
+* [Methodology](#methodology)
 * [Target Audience](#target-audience)
 * [Disclaimer](#disclaimer)
 * [Next Steps](#next-steps)
