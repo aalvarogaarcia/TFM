@@ -51,6 +51,29 @@ The R Markdown report provides a detailed overview of the methodology and result
 * Integrating the tool with other bioinformatics tools.
 
 
+<hr>
+<!-- ------------------ SECTION 7 ------------------ -->
+
+<a name="References"></a>
+## References
+
+<ol>
+<li><a href="https://www.who.int/publications/i/item/9789240018440">Genomic sequencing of SARS-CoV-2. A guide to implementation for maximum impact on public health</a>, WHO, January 8, 2021.</li>
+<li><a href="https://apps.who.int/iris/handle/10665/3"> Report “Global genomic surveillance strategy for pathogens with pandemic and epidemic potential, 2022-2032”</a>. Ginebra, WHO, 2022.</li>
+<li>Gohl DM, Garbe J, Grady P, et al. A rapid, cost-effective tailed amplicon method for sequencing SARS-CoV-2. <i>BMC Genomics</i>. 2020;21(1):863. Published 2020 Dec 4. <a href="https://doi.org/10.1186/s12864-020-07283-6">doi:10.1186/s12864-020-07283-6</a>.</li>
+<li>Itokawa K, Sekizuka T, Hashino M, Tanaka R, Kuroda M. Disentangling primer interactions improves SARS-CoV-2 genome sequencing by multiplex tiling PCR. <i>PLoS One</i>. 2020;15(9):e0239403. Published 2020 Sep 18. <a href="https://doi.org/10.1371/journal.pone.0239403">doi:10.1371/journal.pone.0239403</a>.</li> 
+<li>Koskela von Sydow A, Lindqvist CM, Asghar N, et al. Comparison of SARS-CoV-2 whole genome sequencing using tiled amplicon enrichment and bait hybridization. <i>Sci Rep</i>. 2023;13(1):6461. Published 2023 Apr 20. <a href="https://doi.org/10.1038%2Fs41598-023-33168-1">doi:10.1038/s41598-023-33168-1</a>.</li>
+<li>Zhou B, Wentworth DE. Influenza A virus molecular virology techniques. <i>Methods Mol Biol.</i> 2012;865:175-192. doi:<a href="https://link.springer.com/protocol/10.1007/978-1-61779-621-0_11">10.1007/978-1-61779-621-0_11</a>.</li>
+<li>Zhou B, Lin X, Wang W, et al. Universal influenza B virus genomic amplification facilitates sequencing, diagnostics, and reverse genetics. <i>J Clin Microbiol</i>. 2014;52(5):1330-1337. doi:<a href="https://doi.org/10.1128/jcm.03265-13">10.1128/JCM.03265-13</a>.</li>
+<li>Ying Lin, Jeffrey Koble, Priyanka Prashar, Anita Pottekat, Christina Middle, Scott Kuersten, Michael Oberholzer, Robert Brazas, Darcy Whitlock, Robert Schlaberg, Gary P. Schroth. A sequencing and subtyping protocol for Influenza A and B viruses using Illumina® COVIDSeq™ Assay Kit. Protocols.io. doi:<a href="https://dx.doi.org/10.17504/protocols.io.n2bvj8mrxgk5/v1">dx.doi.org/10.17504/protocols.io.n2bvj8mrxgk5/v1
+</a></li>
+</ol>
+  
+<p align="right">
+  <a href="#Influenza" title="Up">
+    <img src="https://github.com/genomicsITER/influenza/blob/main/images/home-icon.png" style="float: right; margin: 10px; padding: 2px;" />
+  </a>
+</p>
 
 
 
