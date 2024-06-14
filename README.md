@@ -48,4 +48,22 @@ The R Markdown report provides a detailed overview of the methodology and result
 * Developing more advanced visualization techniques.
 * Integrating the tool with other bioinformatics tools.
 
+<hr>
+<!-- ------------------ SECTION 12 ------------------ -->
 
+<a name="Update logs"></a>
+## Update logs
+
+> December 29, 2023. Several updates follows: figure 3 is updated; the bioinformatic workflow is enriched with an addition step of de novo assembly with Unycicler (SPAdes) in the case of multiple sequence alignment failure; BED files for Influenza A (H1N1 and H3N2) and B have been updated (strands and coordinates for the oligos were updated from a previous version of these files); useful BED files for mosdepth are provided to compute mean coverage-per-region in each strain.
+
+> September 29, 2023. This repository became fully public. Enjoy the reading! ;=)
+
+> September 26, 2023. Updated many sections: bioinformatic pipeline, primer-schemes (required BED files for the pipelines), deposited sequences, Influenza virus A and B reference sequences, and other useful repositories with resources to study Influenza.
+ 
+> July 26, 2023. Created the private version of this repository.
+
+<p align="right">
+  <a href="#Influenza" title="Up">
+    <img src="https://github.com/genomicsITER/influenza/blob/main/images/home-icon.png" style="float: right; margin: 10px; padding: 2px;" />
+  </a>
+</p>
