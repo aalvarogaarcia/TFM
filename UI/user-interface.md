@@ -27,7 +27,7 @@ conda deactivate
 
 
 <p align="right">
-  <a href="https://github.com/aalvarogaarcia/TFM/tree/main" title="Up">
+  <a href="https://github.com/aalvarogaarcia/TFM/tree/main" title="Back to home">
     <img src="https://github.com/aalvarogaarcia/TFM/blob/main/images/home-icon.png" style="float: right; margin: 10px; padding: 2px;" />
   </a>
 </p>
