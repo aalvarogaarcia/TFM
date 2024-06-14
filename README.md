@@ -2,7 +2,7 @@
 
 # Unsupervised Clustering
 
-This repository contains a Shiny [user interface](https://github.com/aalvarogaarcia/TFM/blob/main/UI/user-interface.md) and an [R Markdown](https://github.com/aalvarogaarcia/TFM/tree/main/RMD) report for unsupervised clustering for endophenotype discovery in genetic and proteomics data. 
+This repository contains a Shiny [user interface](https://github.com/aalvarogaarcia/TFM/blob/main/UI/user-interface.md) and an [R Markdown](https://github.com/aalvarogaarcia/TFM/tree/main/RMD/RMD.md) report for unsupervised clustering for endophenotype discovery in genetic and proteomics data. 
 The project was developed as part of a Master's thesis in Bioinformatics and biostatistics from UOC-UB in collaboration with the Genomics Division of the Institute of Technology and Renewable Energy (https://www.iter.es/areas/area-genomica/).
 
 ## Table of contents
