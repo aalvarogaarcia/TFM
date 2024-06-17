@@ -1,0 +1,746 @@
+---
+title: "Informe dinámico"
+author: "Álvaro García Muñoz"
+date: "`r Sys.Date()`"
+bibiliography: Data/TFM.bib
+biblio-style: "apalike"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  pdf_document:
+    latex_engine: "xelatex"
+    toc: true
+    number_sections: true
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+path <- "C:/Users/agarm/Desktop/TFM 2.0/TFM-2.0" 
+knitr::opts_chunk$set(echo = TRUE) #""MAC: ~/Documents/GitHub ; Wind: C:/Users/agarm/Desktop/TFM 2.0/TFM-2.0
+knitr::opts_knit$set(root.dir = path)
+```
+
+```{r librerias, include =FALSE}
+library(tidyverse)
+library(MASS)
+library(dummy)
+library(mice)
+library(ggplot2)
+library(umap)
+library(Rtsne)
+library(dbscan)
+library(moments)
+library(gridExtra)
+library(ConsensusClusterPlus)
+
+#Working directory
+  getwd()
+  setwd(path)
+  rm(list = ls())
+set.seed(123)
+
+colors <- c("#00FFFF", "#242278", "#00A1F2", "#00EEFF", "#111691",  #Because of my TFM I've choose a blue gradient
+            "#00B7FF", "#00DDFF", "#0300C2", "#00C3FF", "#0042E8")  #From https://coolors.co (Colors palettes IA)
+```
+
+# Introducción
+
+En este documento concevido para el análisis de datos normalizados provenientes de protemómica usando tecnología de **Olink**, más concretamente la tecnología _NPX_ (Normalized Protein eXpression), de un archivo csv llamado _Olink.NPX_values.Inflammatory-panels.csv_. En el se describen se encuentran muestras de las proteínas de personas que han sufrido enfermedades respiratorias graves, principalmente fibrosis pulmonar idiopática y COVID-19 grave. El script desarrollado en este documento presenta un análisis de este tipo de datos junto a un conjunto de datos de los mimsas muestras con datos sobre los fenotipos de las muestras.
+
+
+```{r Carga de datos, echo = FALSE}
+#File reading
+  path <- "data"
+  fn_phenotypes<- "phenotypes.tsv"
+  fn_proteins <- "Olink.NPX_values.Inflammatory-panels.csv"
+
+  phenotypes <- read_tsv(paste(path,fn_phenotypes, sep="/"))
+  proteins <- read.csv(paste(path,fn_proteins,sep="/"))
+```
+
+# Exploración de los datos
+
+Para realizar correctamente el estudio multivariante de los datos se debe comenzar por reconocer las variables, es por ello que este primer apartado esta dedicado a la exploración de las variables. Se dividirá en 3 sub-apartados:
+
+- Exploración de datos faltantes.
+- Análisis univariante.
+- Análisis multivariante.
+
+Antes de comenzar con la exploración de los datos se observa la estructura de ambos conjuntos de datos:
+
+```{r Estructura}
+str(proteins[,10])
+str(phenotypes)
+```
+
+
+## Exploración de datos faltantes
+
+Para imputar los datos faltantes se realiza el siguiente procedimiento:
+- Utilizar para el conjunto de proteínas el método **pmm** de la función _mice_ (ref)  del paquete del mismo nombre 
+
+```{r Cálculo NA, message=FALSE, warning=FALSE}
+m <- 5
+temp <- mice(proteins, method = 'pmm', m=m, seed=23, print=FALSE)
+```
+
+Una vez realizado el análisis y el cálculo $m = `r m`$ veces se imputan en los valores en los datos faltantes:
+
+```{r Impute}
+for(i in 1:ncol(proteins)){
+  index <- which(is.na(proteins[,i]))
+  proteins[index, i] <- median(t(temp$imp[[i]]))
+}
+```
+
+## Análisis univariante
+En este apartado se procede a realizar un análisis profundo sobre las variables estudiadas.
+
+### Proteínas
+
+Se empezará por estudiar las provenientes de proteómica, estas serán variables ya normalizadas. El siguiente plot muestra la densidad de una muestra aleatoria de proteínas:
+
+```{r Density protein}
+index <- sample(2:ncol(proteins), 16, replace = FALSE)
+#Random indexes to plot 16 proteins
+temp <- cbind(proteins[,index])
+
+#Density (sample)
+pl<- list()
+i <- 1
+for(x in temp[,1:4]){
+  pl[[i]] <- ggplot(temp, aes(x)) + 
+    geom_density(color = colors[2], fill = colors[1]) +
+    labs(title = paste("Density of protein number", colnames(temp)[i]), x = "Proteína",  y = "Densidad") +
+    theme_light()
+  i <- i+1
+}
+grid.arrange(pl[[1]], pl[[2]], pl[[3]], pl[[4]], ncol = 2)
+```
+
+A continuación, se desea estudiar la desviación de las diferentes variables, por lo que se usará la mediana absoluta de desviación, usaremos una muestra de `r ncol(temp)` proteínas para este estudio estudio:
+
+```{r Classic metrics}
+for (i in 1:ncol(temp)){ 
+    tempt <- fivenum(temp[,i])
+    q <- paste('-The quartiles of ', colnames(temp)[i], 
+               '. Min:',tempt[1], 
+               '. 1Q:' ,tempt[2],
+               '. Median:', tempt[3],
+               '. 3Q:', tempt[4],
+               '. Máx:', tempt[5]
+               , sep = '')
+    m <- paste('-The mean of', colnames(temp)[i], 'is', mean(temp[,i], sep= ' '))
+    mad <- paste("-The median absolute deviation of",colnames(temp)[i], "is", mad(temp[,i]), sep= " ")
+    
+    tempt <- sd(temp[,i])/mean(temp[,i])
+    cv <- paste("-The coefficient of variation of",colnames(temp)[i], "is", tempt, sep= " ")
+    title <- paste('Analysis of variable ', colnames(temp)[i], ':', sep = '')
+    cat(title ,q, m, mad, cv, sep = "\n")   
+
+    boxplot(temp[,i], main = paste("Boxplot of Variable", colnames(temp)[i], sep = " "))
+  } 
+```
+
+Se constata que las proteínas estan distribuidas de manera similiar.
+
+También, se desea analizar la forma de distribución de las diferentes proteínas. Para ello se usarán dos estadísticos, la __curtosis__ y el __sesgo__:
+
+```{r Curtosis y sesgo, echo=FALSE}
+kurtosis <- list('Normal' = c(), 'Leptokurtic' = c(), 'Platykurtic' = c())
+  skewness <- list('Symmetric' = c(), 'Right' = c(), 'Left' = c())
+  for (i in 2:ncol(proteins)){
+    temp <- kurtosis(proteins[,i])
+    tempt <- skewness(proteins[,i])
+    
+    if(temp == 3){
+      kurtosis[[1]] <- cbind(kurtosis[[1]], colnames(proteins)[i])
+    }
+    else if(temp >3){
+      kurtosis[[2]] <- cbind(kurtosis[[2]], colnames(proteins)[i])
+    }
+    else{
+      kurtosis[[3]] <- cbind(kurtosis[[3]], colnames(proteins)[i])
+    }
+    
+    
+    if(temp == 0){
+      skewness[[1]] <- cbind(skewness[[1]], colnames(proteins)[i])
+    }
+    else if(temp < 0){
+      skewness[[2]] <- cbind(skewness[[2]], colnames(proteins)[i])
+    }
+    else{
+      skewness[[3]] <- cbind(skewness[[3]], colnames(proteins)[i])
+    }
+  }
+  
+  N <- paste(kurtosis[[1]], sep = ", ")
+  L <- paste(kurtosis[[2]], sep = ", ")
+  P <- paste(kurtosis[[3]], sep = ", ")
+  
+
+  
+  cat('Kurtosis lengths:', 'Normal:', length(kurtosis[[1]]), 'Leptokurtic:', length(kurtosis[[2]]), 'Platykurtic:', length(kurtosis[[3]]), sep = '\n')
+  k <- c(length(kurtosis[[1]]), length(kurtosis[[2]]), length(kurtosis[[3]]))
+  
+  N <- paste(skewness[[1]], sep = ", ")
+  L <- paste(skewness[[2]], sep = ", ")
+  P <- paste(skewness[[3]], sep = ", ")
+  
+  cat('Skewness lengths:', 'Symmetric:', length(skewness[[1]]), 'Right:', length(skewness[[2]]), 'Left:', length(skewness[[3]]), sep = '\n')
+  
+  s <- c(length(skewness[[1]]), length(skewness[[2]]), length(skewness[[3]]))
+```
+
+Se constata que las variable son mayormente, _`r names(kurtosis)[which.max(k)]`_ y _`r names(skewness)[which.max(s)]`_.
+
+### Fenotipos
+
+Una vez realizado este pequeño análisis univariante de las proteínas se procede a realizar un análisis univariante de los datos fenotípicos. Estan son las variables que fenotípicas que se están estudiando:
+
+_`r colnames(phenotypes)[-which(colnames(phenotypes)=='id')]`_.
+
+Se procede a representar las variables:
+
+```{r Phenotypes plotting}
+phenotypes$AgeGroup <- cut(phenotypes$Age, seq(0, 100, 10))
+phenotypes$Sex <- as.character(phenotypes$Sex)
+  
+p1 <- ggplot(phenotypes, aes(x = Site)) + geom_bar(fill = colors[1:2]) + xlab('Site') + ylab('Quantity') + theme_light()
+p2 <- ggplot(phenotypes, aes(x = Sex)) + geom_bar(fill = colors[3:4]) + xlab('Sex') + ylab('Quantity') + theme_light()
+p3 <- ggplot(phenotypes, aes(x = Ancestry)) + geom_bar(fill = colors[1:5]) + xlab('Ancestry') + ylab('Quantity') + theme_light()
+p4 <- ggplot(phenotypes, aes(x = Diagnosis)) + geom_bar(fill = colors[1:4]) + xlab('Diagnosis') + ylab('Quantity') + theme_light()
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+  
+p5 <- ggplot(phenotypes, aes(x = Age)) + geom_bar(fill = colors[1]) + xlab('Age') + ylab('Quantity') + theme_light()
+p6 <- ggplot(phenotypes, aes(x = AgeGroup)) + geom_bar(fill=colors[2]) + xlab('Age group') + ylab('Quantity') + theme_light()
+grid.arrange(p5, p6, ncol = 2)
+```
+
+Se están estudiando `r ncol(phenotypes)` variables fenotípicas. Mayoritaríamente catégoricas, además se observa que estamos estudiando `r length(table(phenotypes[,which(colnames(phenotypes)=='Diagnosis')]))` diágnosticos diferentes.
+
+
+
+## Análisis bivariante
+
+A continuación se procede a realizar un estudio bivariado de las diferentes variables a estudiar.
+
+### Modelos lineales
+
+Se estudia la la correlacción de las proteínas con el objetivo de escoger las de mayor correlacción para realizar una regresión lineal:
+
+```{r Correlacción}
+#Define a threshold for strong correlation
+threshold1 <- 0.95
+cr <- cor(proteins[,-1])
+
+temp1 <- c()
+for(i in 1:ncol(cr)){
+  for(j in i:nrow(cr)){
+    if(abs(cr[i,j]) > threshold1 && i!=j){
+      temp1 <- rbind(temp1, c(i,j))
+    }
+  }
+}
+
+#Define a threshold for weak correlation
+threshold2 <- 0.01
+cr <- cor(proteins[,-1])
+temp2 <- c()
+for(i in 1:ncol(cr)){
+  for(j in i:nrow(cr)){
+    if(abs(cr[i,j]) < threshold2 && i!=j){
+      temp2 <- rbind(temp2, c(i,j))
+    }
+  }
+}
+
+temp1.cor <- temp1
+temp2.cor <- temp2
+```
+
+En total obtenemos `r nrow(temp1)` pares de proteínas con una alta correlacción. Se procede a mostrar una regresión lineal de una muestra aleatoria de estas proteínas:
+
+
+```{r Regresion}
+#Linear regression selecting 9 proteins highly and positively correlated
+temp <- sample(1:nrow(temp1), 9)
+#'temp1' contains the protein indexes
+temp1 <- temp1[temp,]
+pl <- list()
+for(i in 1:nrow(temp1)){
+  data <- data.frame("x" =proteins[,temp1[i,1]+1], "y"=proteins[,temp1[i,2]+1])
+  pl[[i]] <- ggplot(aes(x, y), data = data) +
+    geom_point(color = colors[1])+
+    geom_smooth(method = "lm", se = TRUE, color = colors[2])+
+    xlab(paste('Protein',colnames(proteins)[temp1[i,1]+1]))+
+    ylab(paste('Protein',colnames(proteins)[temp1[i,2]+1]))+
+    theme_light()
+}
+grid.arrange(pl[[1]], pl[[2]], pl[[3]],
+             pl[[4]], pl[[5]], pl[[6]],
+             pl[[7]], pl[[8]], pl[[9]],
+             ncol = 3)
+```
+
+
+### Covarianza proteínas
+
+Se estudia la covarianza de las proteínas
+
+```{r Covarianza}
+temp <- cov(proteins[,-1])
+covariance <- data.frame(x = temp[lower.tri(temp)])
+
+ggplot(covariance, aes(x = x)) + 
+  geom_histogram(binwidth = 0.001, fill = colors[1]) + 
+  labs(x = "Value", y = "Frequency") + 
+  theme_minimal()
+```
+
+Para su análisis se han eliminado una serie de proteínas según su covarianza. Esto es debido al desequilibrio de ligamiento y se ha puesto como corte un valor de `r threshold1``. Es decir, de aquellas covarianzas que superen el $0.9$ de covarianza se ha eliminado una de ellas.
+
+## Análisis multivariante
+
+Se procede a detectar valores atípicos de manera multivariante, para ello se implementará la distancia de canberra sobre estimadores robustos. Sin embargo se procede en primera instancia al agrupamiento de los datos:
+
+
+### Agrupamiento de los datos
+
+Se ajustan los datos, vamos a transformar la matriz de fenotipos.
+
+```{r Hot-encoding of Phenotypes}
+phenotypes$Diagnosis <- as.factor(phenotypes$Diagnosis)
+phenotypes$Site <- as.factor(phenotypes$Site)
+phenotypes$Sex <- as.factor(phenotypes$Sex)
+temp <- dummy(phenotypes[,-1], int = TRUE)
+temp1 <- cbind('Age' = phenotypes$Age, temp)
+phenotypes.int <- cbind(phenotypes[,1], temp1)
+phenotypes.int <- phenotypes.int[,-grep('AgeGroup_.', colnames(phenotypes.int))]
+```
+
+
+Una vez ajustada la matriz de fenotipos a una matriz numérica se porcede a combinarla con la matriz de proteínas. Se obtendran 3 matrices sujetas a estudio: 
+- __EM (Extended matrix)__: Esta será la matriz que guardará todos los datos y la principal matriz sometida a estudio
+
+- __Proteins.nb (Proteins new base)__: Esta será la matriz que contendrá la información proteíca de los individuos definida en una base sin covarianza entre los individuos. 
+
+- __Data___: Esta será una matriz sin la variable _Diagnosis_ utilizada para los agrupamientos supervisados.
+
+```{r Agrupamiento matricial}
+labels <- subset(phenotypes, select = c(id, Diagnosis))
+proteins.nb <- proteins[,-temp1.cor[,1]]
+rownames(proteins.nb) <- proteins.nb$id
+
+em <- merge(proteins.nb, phenotypes.int, by='id')
+
+
+proteins.nb <-scale(proteins.nb[,-which(colnames(proteins.nb) == "id")])
+em <- scale(em[,-1])
+
+data <- em[,-grep('Diagnosis',colnames(em))]
+rownames(data) <- rownames(em)
+data <- scale(data[,-1])
+
+write.csv2(proteins.nb, "proteins-matrix.csv", quote = FALSE, row.names = FALSE)
+write_tsv(phenotypes.int, "phenotypes-matrix.tsv", quote = "none")
+```
+
+### Detección de valores atípicos
+
+Se procede a calcular estimadores robustos de la matriz de proteínas y calcular la distancia de Mahalanobis al vector media.
+
+```{r Estimadores robustos}
+mu <- c()
+for (i in 2:ncol(proteins)){
+  temp <- rlm(proteins[,i]~1, maxit = 100)$coefficients
+  mu <- cbind(mu ,temp)
+}
+
+#Robust covariance matrix
+sig <- cov.rob(proteins[,-1])$cov
+
+#Distance to mu (Mahalanobis)
+dist.mu <- apply(proteins[,-1], 1, function(x) mahalanobis(x, mu, sig))
+dist.mu <- data.frame(Index = 1:length(dist.mu), distance = dist.mu)
+
+ggplot(dist.mu, aes(Index, distance)) + 
+  geom_point(col = colors[2]) + 
+  theme_light()+
+  ggtitle('Distance Mahalanobis')
+```
+
+Una vez se ha calculado la distancia de Mahalanobis se define un umbral a a partir del cual se definirá valor atípico, el umbral empleado en este estudio es de `r 3 * sd(dist.mu$distance)`.
+
+```{r Outlier}
+#Outlier detection
+threshold3 <- 3 * sd(dist.mu$distance)
+outlier <- which(dist.mu$distance > threshold3)
+
+#Outlier factor
+outlier.v <- rep(0, nrow(proteins))
+outlier.v[outlier] <- 1
+outlier.v <- factor(outlier.v)
+levels(outlier.v) <- c('Normal', 'Outlier')
+```
+
+
+# Distancias
+
+En este punto se procede a realizar un estudio usando el escalado dimensional con la definición de diferentes distancias que permitan visualizar las diferencias entre grupos. Es remarcable decir que las métricas usadas no serán equivalentes puesto permitirá encontrar escalados variados.
+
+## Distancia Euclidea
+
+Se comenzará por estudiar mediante la distancia clásica por excelencia, la distancia euclidea. Calculamos la matriz de distancia euclídea entre los individuos:
+
+```{r Distancia euclidea, message=FALSE}
+
+dist.prot.nb <- dist(proteins.nb)
+dist.em <- dist(em)
+dist.data <- dist(data)
+
+data.mds <-data.frame(X1 = cmdscale(dist.data)[,1], X2 = cmdscale(dist.data)[,2], disease = phenotypes$Diagnosis, outlier = outlier.v) 
+proteins.mds <- data.frame(X1 = cmdscale(dist.prot.nb)[,1], X2 = cmdscale(dist.prot.nb)[,2], disease = phenotypes$Diagnosis , outlier = outlier.v)
+em.mds <-data.frame(X1 = cmdscale(dist.em)[,1], X2 = cmdscale(dist.em)[,2], disease = phenotypes$Diagnosis, outlier = outlier.v) 
+
+dise.data.mds <- ggplot(data.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+
+dise.proteins.mds <- ggplot(proteins.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+dise.em.mds <-ggplot(em.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Extended Matrix',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+grid.arrange(dise.data.mds, dise.proteins.mds, dise.em.mds, ncol = 3)
+```
+
+
+## Distancia Pearson
+
+De forma análogica se observa el MDS utilizando la distancia de Pearson de fórmula $d(x,y) = 1-cor(x,y))$.
+
+
+```{r Pearson}
+dist.prot.nb <- 1 - cor(t(proteins.nb))
+dist.em <-1 - cor(t(em))
+dist.data <-1 - cor(t(data))
+
+data.mds <-data.frame(X1 = cmdscale(dist.data)[,1], X2 = cmdscale(dist.data)[,2], disease = phenotypes$Diagnosis, outlier = outlier.v) 
+proteins.mds <- data.frame(X1 = cmdscale(dist.prot.nb)[,1], X2 = cmdscale(dist.prot.nb)[,2], disease = phenotypes$Diagnosis , outlier = outlier.v)
+em.mds <-data.frame(X1 = cmdscale(dist.em)[,1], X2 = cmdscale(dist.em)[,2], disease = phenotypes$Diagnosis, outlier = outlier.v) 
+
+dise.data.mds <- ggplot(data.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+
+dise.proteins.mds <- ggplot(proteins.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+dise.em.mds <-ggplot(em.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Extended Matrix',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+grid.arrange(dise.data.mds, dise.proteins.mds, dise.em.mds, ncol = 3)
+```
+
+Justamente estas la definición de estas dos métricas es interesante ya que no son métricas equivalentes.
+
+
+## Distancia Canberra
+
+A continuación, se procede a mostrar el MDS de una métrica equivalente a la euclídea.
+
+```{r Distancia Canberra}
+dist.prot.nb <- dist(proteins.nb, method = 'canberra')
+dist.em <- dist(em, method = 'canberra' )
+dist.data <- dist(data, method = 'canberra')
+
+data.mds <-data.frame(X1 = cmdscale(dist.data)[,1], X2 = cmdscale(dist.data)[,2], disease = phenotypes$Diagnosis, outlier = outlier.v) 
+proteins.mds <- data.frame(X1 = cmdscale(dist.prot.nb)[,1], X2 = cmdscale(dist.prot.nb)[,2], disease = phenotypes$Diagnosis , outlier = outlier.v)
+em.mds <-data.frame(X1 = cmdscale(dist.em)[,1], X2 = cmdscale(dist.em)[,2], disease = phenotypes$Diagnosis, outlier = outlier.v) 
+
+dise.data.mds <- ggplot(data.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+
+dise.proteins.mds <- ggplot(proteins.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+dise.em.mds <-ggplot(em.mds, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Extended Matrix',
+       caption= 'disease color') +
+  xlab('MDS1') + ylab('MDS2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+grid.arrange(dise.data.mds, dise.proteins.mds, dise.em.mds, ncol = 3)
+```
+
+Estas gráficas son los escalados multidimensionales de de diferentes distancias que pueden mostrar agrupamientos de las diferentes variables.
+
+
+# Clustering methods
+
+En este apartado se utilizaran una serie de métodos para encontrar agrupamientos siguiendo diferentes algoritmos y se mostrarán usando métodos de reducciónd de dimensiones. Los algoritmos de agrupamiento que se utilizarán son:
+
+- K-means.
+- HDBScan.
+
+Y los métodos de reducción de dimensiones que se utilizarán son:
+
+- UMAP.
+- t-SNE.
+
+## Reducción de dimensiones
+
+Se procede a calcular las coordenadas de ambos métodos de reducción de dimensiones.
+
+### UMAP
+
+Se usa UMAP para la reducción de dimensiones.
+
+```{r UMAP layout}
+em.umap <-umap(em)
+data.umap <-umap(data)
+proteins.umap <- umap(proteins.nb)
+```
+
+Se observan los resultados.
+
+```{r UMAP plot}
+data.umap <-data.frame(data.umap$layout, disease = phenotypes$Diagnosis, outlier = outlier.v) 
+proteins.umap <- data.frame(proteins.umap$layout, disease = phenotypes$Diagnosis, outlier = outlier.v)
+em.umap <- data.frame(em.umap$layout, disease = phenotypes$Diagnosis, outlier = outlier.v)
+
+dise.data.umap <- ggplot(data.umap, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'disease color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:4])
+
+
+dise.proteins.umap <- ggplot(proteins.umap, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins',
+       caption= 'disease color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) +
+  scale_color_manual(values = colors[1:4])
+
+dise.em.umap <- ggplot(em.umap, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Extended Matrix',
+       caption= 'disease color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) +
+  scale_color_manual(values = colors[1:4])
+
+grid.arrange(dise.data.umap, dise.proteins.umap, dise.em.umap, ncol = 3)
+```
+
+### T-SNE
+
+Se usa t-SNE para la reducción de dimensiones.
+
+```{r t-SNE layout}
+em.tsne <- Rtsne(em)
+data.tsne <- Rtsne(data)
+proteins.tsne <- Rtsne(proteins.nb)
+```
+
+Se muestrán los resultados:
+
+```{r t-SNE plot}
+data.tsne <-data.frame(X1 = data.tsne$Y[,1], X2 = data.tsne$Y[,2], disease = phenotypes$Diagnosis, outlier = outlier.v) 
+proteins.tsne <- data.frame(X1 = proteins.tsne$Y[,1], X2 = proteins.tsne$Y[,2], disease = phenotypes$Diagnosis , outlier = outlier.v)
+em.tsne <- data.frame(X1 = em.tsne$Y[,1], X2 = em.tsne$Y[,2], disease = phenotypes$Diagnosis , outlier = outlier.v)
+
+dise.data.tsne <- ggplot(data.tsne, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'disease color') +
+  xlab('TSNE1') + ylab('TSNE2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) +
+  scale_color_manual(values = colors[1:4])
+
+
+dise.proteins.tsne <- ggplot(proteins.tsne, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins',
+       caption= 'disease color') +
+  xlab('TSNE1') + ylab('TSNE2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) +
+  scale_color_manual(values = colors[1:4])
+  
+dise.em.tsne <- ggplot(em.tsne, aes(X1, X2, col = disease, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins',
+       caption= 'disease color') +
+  xlab('TSNE1') + ylab('TSNE2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) +
+  scale_color_manual(values = colors[1:4])
+  
+grid.arrange(dise.data.tsne, dise.proteins.tsne, dise.em.tsne, ncol = 3)
+```
+
+
+## Agrupamientos no supervisados
+
+Se procede a realizar agrupamientos no supervisados.
+
+### K-means
+
+Se procede a realizar el agrupamiento usando k-means.
+
+```{r k-means}
+k = 6 #Ajustar según los agrupamientos observados
+em.kmeans <-cbind(em.umap, cluster = as.factor(kmeans(em, centers = k)$cluster))
+data.kmeans <-cbind(data.umap, cluster = as.factor(kmeans(data, centers = k)$cluster))
+proteins.kmeans <-cbind(proteins.umap, cluster =  as.factor(kmeans(proteins.nb, centers = k)$cluster))
+```
+
+Se muestrán los resultados usando UMAP.
+
+```{r kmeans UMAP}
+km.data.umap <- ggplot(data.kmeans, aes(X1, X2, col = cluster, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'k-means color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:k])
+
+km.em.umap <- ggplot(em.kmeans, aes(X1, X2, col = cluster, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Extended Matrix',
+       caption= 'k-means color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:k])
+
+km.proteins.umap <- ggplot(proteins.kmeans, aes(X1, X2, col = cluster, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'k-means color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:k])
+
+grid.arrange(km.data.umap, km.proteins.umap, km.em.umap, ncol = 3)
+```
+
+
+### HDBScan
+
+Se procede a realizar el agrupamiento de las tres matrices usando HDBScan.
+
+```{r HDBScan}
+  pts = 5 #Ajustar para diferentes resultados
+  em.hdbscan <-cbind(em.umap, cluster.hdb = as.factor(hdbscan(em, minPts = pts)$cluster))
+  data.hdbscan <-cbind(data.umap, cluster.hdb = as.factor(hdbscan(data, minPts = pts)$cluster))
+  proteins.hdbscan <-cbind(proteins.umap, cluster.hdb =  as.factor(hdbscan(proteins.nb, minPts = pts)$cluster))
+```
+
+Se muestrán los resultados del agrupamiento usando UMAP.
+
+```{r hdbscan UMAP}
+
+hdb.data.umap <- ggplot(data.hdbscan, aes(X1, X2, col = cluster.hdb, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'HDBSCAN color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:length(levels(data.hdbscan$cluster.hdb))])
+
+hdb.em.umap <- ggplot(em.hdbscan, aes(X1, X2, col = cluster.hdb, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Extended Matrix',
+       caption= 'HDBSCAN color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:length(levels(em.hdbscan$cluster.hdb))])
+
+hdb.proteins.umap <- ggplot(proteins.hdbscan, aes(X1, X2, col = cluster.hdb, shape = outlier )) + 
+  geom_point() + 
+  labs(title='Proteins and Covariates',
+       caption= 'HDBSCAN color') +
+  xlab('UMAP1') + ylab('UMAP2') +
+  theme_light() +
+  scale_shape_manual(values = c('Normal' = 19, 'Outlier' = 8)) + 
+  scale_color_manual(values = colors[1:length(levels(proteins.hdbscan$cluster.hdb))])
+
+grid.arrange(hdb.data.umap, hdb.proteins.umap, hdb.em.umap, ncol = 3)
+```
+
+
+# Conclusiones
+
+Este documento pretende facilitar el estudio de datos de proteómica de alta precisión usando tecnología Olink. Sin embargo las conclusiones han de extraerse de manera análoga comprobando los resultados obtenidos. Además también es altamente recomendado continuar con los análisis para encontrar más datos.
+
