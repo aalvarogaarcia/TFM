@@ -30,8 +30,8 @@ The R Markdown report provides a detailed overview of the methodology and result
 
 ### Key Features:
 
-* Interactive Shiny user interface: The Shiny user interface allows users to easily upload data, select clustering algorithms and visualization techniques, and view the results of the analysis.[Instructions](RMD/RMD.MD) 
-* Comprehensive R Markdown report: The R Markdown report provides a detailed overview of the methodology, including data preprocessing, clustering analysis, and visualization.[Instructions](UI/UI.MD)
+* Interactive Shiny user interface: The Shiny user interface allows users to easily upload data, select clustering algorithms and visualization techniques, and view the results of the analysis. [Instructions](RMD/RMD.md) 
+* Comprehensive R Markdown report: The R Markdown report provides a detailed overview of the methodology, including data preprocessing, clustering analysis, and visualization. [Instructions](UI/UI.md)
 * Multiple R Scripts: In these scripts a whole series of methods and functions are developed with different objectives for the analysis and visualization of data.
 
 ## Target Audience:
