@@ -83,19 +83,7 @@ The R Markdown report provides a detailed overview of the methodology and result
 <a name="Acknowledgements"></a>
 ## Acknowledgements
 
-This study has been funded by Cabildo Insular de Tenerife (CGIEU0000219140 and "_Apuestas científicas del ITER para colaborar en la lucha contra la COVID-19_"); by the agreement with Instituto Tecnológico y de Energías Renovables (ITER) to strengthen scientific and technological education, training, research, development and innovation in Genomics, epidemiological surveillance based on massive sequencing, Personalized Medicine and Biotechnology (OA17/008 and OA23/043); and by the agreement between Consejería de Educación, Universidades, Cultura y Deportes del Gobierno de Canarias y Cabildo Insular de Tenerife, 2022-2025 (AC0000014697).
-
-This study is also an activity within the project Consolidation of WGS and RT-PCR activities for SARS-CoV-2 in Spain towards sustainable use and integration of enhanced infrastructure and capacities in the RELECOV network (101113109 - RELECOV 2.0) of the EU4Health Programme (EU4H) by the European Health and Digital Executive Agency (HaDEA), under the coordination of Instituto de Salud Carlos III (ISCIII).
-
-We acknowledge the researchers and their institutions who released influenza sequences through NCBI GenBank, GISAID, and ENA that are being used in our studies. 
-
-We also thank the authors, the laboratories that originated and submitted the genetic sequences and the metadata for sharing their work, as shown on Nextstrain, and:
-<ul>
-  <li>Hadfield <i>et al</i>, Nextstrain: real-time tracking of pathogen evolution, Bioinformatics (2018).</li>
-  <li>Sagulenko <i>et al</i>, TreeTime: Maximum-likelihood phylodynamic analysis, Virus Evolution (2017).</li>
-</ul>
-
-<!-- We would like to acknowledge the contributions of several researchers and laboratories who share their preliminary results through the [Virological](https://virological.org/) website. -->
+The development of this Master's Thesis and definitely this repository has been possible thanks to the invaluable support of the team of the research group of the Genomics Area of the Instituto Tecnológico y de Energías Renovables (ITER), in particular my external tutor José Miguel Lorenzo Salazar, for his invaluable guidance. This work would also not have been possible without the help of my UOC tutor, Dr. José Luis Mosquera Mayo, for his follow-up and valuable suggestions. To all of them, my sincere thanks.
 
 <p align="right">
   <a href="#Influenza" title="Up">
@@ -126,12 +114,17 @@ We also thank the authors, the laboratories that originated and submitted the ge
 <!-- ------------------ SECTION 9 ------------------ -->
 
 <a name="License and Attribution"></a>
-## License and Attribution
+## License and Attribution ![Copyright](https://github.com/aalvarogaarcia/TFM/blob/main/images/ccbyncnd.png)
 
-This repository and data exports are released under the CC BY 4.0 license. Please acknowledge the authors, the originating and submitting laboratories for the genetic sequences and metadata, and the open source software used in this work (third-party copyrights and licenses may apply).
+Attribution-NonCommercial-NoDerivatives (CC BY-NC-ND) License
+This project is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
 
-Please cite this repository as: _"Influenza repository of the Reference Laboratory for Epidemiological Surveillance of Pathogens in the Canary Islands (accessed on YYYY-MM-DD)"_. And do not forget to <a href="#How-to-cite">cite the paper</a> (see the section "How to cite" below) when it becomes available. 
+You are free to Share (copy and redistribute the material in any medium or format) with Attribution (give appropriate credit, provide a link to the license, and indicate if changes were made).
+You may not use this for commercial purposes.
+You may not Adapt (remix, transform, or build upon the material).
+For the full license text, please refer to the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
 
+If you want to use this project commercially or create derivative works, please contact me for permission.
 <p align="right">
   <a href="#Influenza" title="Up">
     <img src="https://github.com/genomicsITER/influenza/blob/main/images/home-icon.png" style="float: right; margin: 10px; padding: 2px;" />
